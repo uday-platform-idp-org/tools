@@ -1,0 +1,33 @@
+name: CD Pipelines
+
+inputs:
+  app_name:
+    required: true
+  argocd_server:
+    required: true
+  argocd_username:
+    default: "admin"
+  argocd_password:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+        chmod +x argocd
+        sudo mv argocd /usr/local/bin/argocd
+      shell: bash
+
+    - run: |
+        argocd login ${{ inputs.argocd_server }} \
+          --insecure \
+          --grpc-web \
+          --username ${{ inputs.argocd_username }} \
+          --password ${{ inputs.argocd_password }}
+      shell: bash
+
+    - run: |
+        argocd app sync ${{ inputs.app_name }}
+        argocd app wait ${{ inputs.app_name }} --timeout 180
+      shell: bash
