@@ -38,11 +38,6 @@ jobs:
           chmod +x argocd
           sudo mv argocd /usr/local/bin/argocd
 
-      - name: Test connectivity
-        run: |
-          echo "Testing connectivity to ArgoCD server..."
-          curl -k --connect-timeout 10 https://${{ inputs.argocd_server }}:${{ inputs.argocd_port }} || true
-        
       - name: ArgoCD Login
         run: |
           argocd login ${{ inputs.argocd_server }}:${{ inputs.argocd_port }} \
@@ -61,6 +56,18 @@ jobs:
             --insecure-skip-server-verification || echo "Repository already exists or failed to add"
         shell: bash
 
+      - name: List repositories
+        run: |
+          echo "Listing all repositories in ArgoCD..."
+          argocd repo list
+        shell: bash
+
+      - name: Test repository connection
+        run: |
+          echo "Testing repository connection..."
+          argocd repo get https://github.com/uday-platform-idp-org/${{ inputs.app_name }} || echo "Failed to get repo details"
+        shell: bash
+
       - name: List applications
         run: |
           echo "Listing all applications..."
@@ -71,15 +78,18 @@ jobs:
         run: |
           if ! argocd app get ${{ inputs.app_name }} >/dev/null 2>&1; then
             echo "Application ${{ inputs.app_name }} not found. Creating..."
+            
+            # Usando o path correto: helm-charts/uday-app
+            echo "Trying to create application with correct path..."
             argocd app create ${{ inputs.app_name }} \
               --repo https://github.com/uday-platform-idp-org/${{ inputs.app_name }} \
-              --path helm-charts \
+              --path helm-charts/uday-app \
               --dest-server https://kubernetes.default.svc \
               --dest-namespace uday-app \
-              --sync-policy automated \
-              --auto-prune \
-              --self-heal \
-              --helm-set app.image=udaytc/${{ inputs.app_name }}:v8
+              --helm-set app.image=udaytc/${{ inputs.app_name }}:v8 \
+              --sync-policy none
+              
+            echo "Application created successfully"
           else
             echo "Application ${{ inputs.app_name }} already exists"
           fi
