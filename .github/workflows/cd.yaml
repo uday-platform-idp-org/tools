@@ -1,42 +1,42 @@
-name: Deploy via ArgoCD
+  name: Deploy via ArgoCD
 
-on:
-  workflow_call:
-    inputs:
-      app_name:
-        required: true
-        type: string
-      argocd_server:
-        required: true
-        type: string
-      argocd_username:
-        required: false
-        type: string
-        default: "admin"
-    secrets:
-      argocd_password:
-        required: true
+  on:
+    workflow_call:
+      inputs:
+        app_name:
+          required: true
+          type: string
+        argocd_server:
+          required: true
+          type: string
+        argocd_username:
+          required: false
+          type: string
+          default: "admin"
+      secrets:
+        argocd_password:
+          required: true
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Download argocd CLI
-        run: |
-          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-          chmod +x argocd
-          sudo mv argocd /usr/local/bin/argocd
-      - name: ArgoCD Login
-        run: |
-          argocd login ${{ inputs.argocd_server }} \
-            --insecure \
-            --grpc-web \
-            --username ${{ inputs.argocd_username }} \
-            --password ${{ secrets.argocd_password }}
-        shell: bash
-      - name: Sync and Wait
-        run: |
-          argocd app sync ${{ inputs.app_name }}
-          argocd app wait ${{ inputs.app_name }} --timeout 180
-        shell: bash
+  jobs:
+    deploy:
+      runs-on: ubuntu-latest
+      
+      steps:
+        - name: Download argocd CLI
+          run: |
+            curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+            chmod +x argocd
+            sudo mv argocd /usr/local/bin/argocd
+        - name: ArgoCD Login
+          run: |
+            argocd login ${{ inputs.argocd_server }} \
+              --insecure \
+              --grpc-web \
+              --username ${{ inputs.argocd_username }} \
+              --password ${{ secrets.argocd_password }}
+          shell: bash
+        - name: Sync and Wait
+          run: |
+            argocd app sync ${{ inputs.app_name }}
+            argocd app wait ${{ inputs.app_name }} --timeout 180
+          shell: bash
