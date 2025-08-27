@@ -29,7 +29,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest  # Mude de ubuntu-latest para self-hosted
+    runs-on: self-hosted  # Mude de ubuntu-latest para self-hosted
     
     steps:
       - name: Download argocd CLI
@@ -38,6 +38,11 @@ jobs:
           chmod +x argocd
           sudo mv argocd /usr/local/bin/argocd
 
+      - name: Test connectivity
+        run: |
+          echo "Testing connectivity to ArgoCD server..."
+          curl -k --connect-timeout 10 https://${{ inputs.argocd_server }}:${{ inputs.argocd_port }} || true
+        
       - name: ArgoCD Login
         run: |
           argocd login ${{ inputs.argocd_server }}:${{ inputs.argocd_port }} \
@@ -79,14 +84,15 @@ jobs:
           if ! argocd app get ${{ inputs.app_name }} >/dev/null 2>&1; then
             echo "Application ${{ inputs.app_name }} not found. Creating..."
             
-            # Usando o path correto: helm-charts/uday-app
+            # Usando o path correto e configurando image e tag separadamente
             echo "Trying to create application with correct path..."
             argocd app create ${{ inputs.app_name }} \
               --repo https://github.com/uday-platform-idp-org/${{ inputs.app_name }} \
               --path helm-charts/uday-app \
               --dest-server https://kubernetes.default.svc \
               --dest-namespace uday-app \
-              --helm-set app.image=udaytc/${{ inputs.app_name }}:v8 \
+              --helm-set app.image=udaytc/${{ inputs.app_name }} \
+              --helm-set app.tag=v8 \
               --sync-policy none
               
             echo "Application created successfully"
@@ -98,12 +104,12 @@ jobs:
       - name: Update image tag if provided
         run: |
           if [ -n "${{ inputs.image_tag }}" ]; then
-            echo "Updating image from v8 to: udaytc/${{ inputs.app_name }}:${{ inputs.image_tag }}"
+            echo "Updating tag from v8 to: ${{ inputs.image_tag }}"
             argocd app set ${{ inputs.app_name }} \
-              --helm-set app.image=udaytc/${{ inputs.app_name }}:${{ inputs.image_tag }}
+              --helm-set app.tag=${{ inputs.image_tag }}
             
             echo "Verifying the change..."
-            argocd app get ${{ inputs.app_name }} -o yaml | grep "image:" || echo "Could not find image in app config"
+            argocd app get ${{ inputs.app_name }} -o yaml | grep -E "(image:|tag:)" || echo "Could not find image/tag in app config"
           else
             echo "No image tag provided, using default from values.yaml (v8)"
           fi
