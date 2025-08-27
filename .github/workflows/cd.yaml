@@ -29,11 +29,19 @@ jobs:
           chmod +x argocd
           sudo mv argocd /usr/local/bin/argocd
 
+      - name: Test connectivity
+        run: |
+          echo "Testing connectivity to ArgoCD server..."
+          curl -v --connect-timeout 10 http://${{ inputs.argocd_server }} || true
+          curl -v --connect-timeout 10 https://${{ inputs.argocd_server }} || true
+          nslookup ${{ inputs.argocd_server }} || true
+        
       - name: ArgoCD Login
         run: |
-          argocd login ${{ inputs.argocd_server }} \
+          argocd login ${{ inputs.argocd_server }}:80 \
             --insecure \
             --grpc-web \
+            --plaintext \
             --username ${{ inputs.argocd_username }} \
             --password ${{ secrets.argocd_password }}
         shell: bash
