@@ -1,4 +1,3 @@
-# tool/.github/workflows/cd.yaml
 name: Deploy via ArgoCD
 
 on:
@@ -20,7 +19,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted  # Mude de ubuntu-latest para self-hosted
     
     steps:
       - name: Download argocd CLI
@@ -32,16 +31,13 @@ jobs:
       - name: Test connectivity
         run: |
           echo "Testing connectivity to ArgoCD server..."
-          curl -v --connect-timeout 10 http://${{ inputs.argocd_server }} || true
-          curl -v --connect-timeout 10 https://${{ inputs.argocd_server }} || true
-          nslookup ${{ inputs.argocd_server }} || true
+          curl -k --connect-timeout 10 https://${{ inputs.argocd_server }}:9092 || true
         
       - name: ArgoCD Login
         run: |
-          argocd login ${{ inputs.argocd_server }}:80 \
+          argocd login ${{ inputs.argocd_server }}:9092 \
             --insecure \
             --grpc-web \
-            --plaintext \
             --username ${{ inputs.argocd_username }} \
             --password ${{ secrets.argocd_password }}
         shell: bash
