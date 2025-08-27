@@ -24,7 +24,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: self-hosted  # Mude de ubuntu-latest para self-hosted
+    runs-on: ubuntu-latest
     
     steps:
       - name: Download argocd CLI
