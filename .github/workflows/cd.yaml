@@ -24,7 +24,7 @@ on:
     secrets:
       argocd_password:
         required: true
-      github_token:
+      repo_token:
         required: true
 
 jobs:
@@ -57,7 +57,7 @@ jobs:
           echo "Adding repository credentials..."
           argocd repo add https://github.com/uday-platform-idp-org/${{ inputs.app_name }} \
             --username ${{ github.actor }} \
-            --password ${{ secrets.github_token }} \
+            --password ${{ secrets.repo_token }} \
             --insecure-skip-server-verification || echo "Repository already exists or failed to add"
         shell: bash
 
