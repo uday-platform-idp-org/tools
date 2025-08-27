@@ -29,7 +29,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest  # Mude de ubuntu-latest para self-hosted
+    runs-on: self-hosted  # Mude de ubuntu-latest para self-hosted
     
     steps:
       - name: Download argocd CLI
@@ -38,6 +38,11 @@ jobs:
           chmod +x argocd
           sudo mv argocd /usr/local/bin/argocd
 
+      - name: Test connectivity
+        run: |
+          echo "Testing connectivity to ArgoCD server..."
+          curl -k --connect-timeout 10 https://${{ inputs.argocd_server }}:${{ inputs.argocd_port }} || true
+        
       - name: ArgoCD Login
         run: |
           argocd login ${{ inputs.argocd_server }}:${{ inputs.argocd_port }} \
@@ -98,11 +103,14 @@ jobs:
       - name: Update image tag if provided
         run: |
           if [ -n "${{ inputs.image_tag }}" ]; then
-            echo "Updating image tag to: udaytc/${{ inputs.app_name }}:${{ inputs.image_tag }}"
+            echo "Updating image from v8 to: udaytc/${{ inputs.app_name }}:${{ inputs.image_tag }}"
             argocd app set ${{ inputs.app_name }} \
               --helm-set app.image=udaytc/${{ inputs.app_name }}:${{ inputs.image_tag }}
+            
+            echo "Verifying the change..."
+            argocd app get ${{ inputs.app_name }} -o yaml | grep "image:" || echo "Could not find image in app config"
           else
-            echo "No image tag provided, using default from values.yaml"
+            echo "No image tag provided, using default from values.yaml (v8)"
           fi
         shell: bash
 
