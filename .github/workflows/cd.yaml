@@ -24,10 +24,12 @@ on:
     secrets:
       argocd_password:
         required: true
+      github_token:
+        required: true
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest 
+    runs-on: self-hosted  # Mude de ubuntu-latest para self-hosted
     
     steps:
       - name: Download argocd CLI
@@ -50,6 +52,15 @@ jobs:
             --password ${{ secrets.argocd_password }}
         shell: bash
 
+      - name: Add repository credentials
+        run: |
+          echo "Adding repository credentials..."
+          argocd repo add https://github.com/uday-platform-idp-org/${{ inputs.app_name }} \
+            --username ${{ github.actor }} \
+            --password ${{ secrets.github_token }} \
+            --insecure-skip-server-verification || echo "Repository already exists or failed to add"
+        shell: bash
+
       - name: List applications
         run: |
           echo "Listing all applications..."
@@ -61,14 +72,14 @@ jobs:
           if ! argocd app get ${{ inputs.app_name }} >/dev/null 2>&1; then
             echo "Application ${{ inputs.app_name }} not found. Creating..."
             argocd app create ${{ inputs.app_name }} \
-              --repo https://github.com/${{ github.repository }} \
+              --repo https://github.com/uday-platform-idp-org/${{ inputs.app_name }} \
               --path helm-charts \
-              --values values.yaml \
               --dest-server https://kubernetes.default.svc \
               --dest-namespace uday-app \
               --sync-policy automated \
               --auto-prune \
-              --self-heal
+              --self-heal \
+              --helm-set app.image=udaytc/${{ inputs.app_name }}:v8
           else
             echo "Application ${{ inputs.app_name }} already exists"
           fi
@@ -77,9 +88,11 @@ jobs:
       - name: Update image tag if provided
         run: |
           if [ -n "${{ inputs.image_tag }}" ]; then
-            echo "Updating image tag to: ${{ inputs.image_tag }}"
+            echo "Updating image tag to: udaytc/${{ inputs.app_name }}:${{ inputs.image_tag }}"
             argocd app set ${{ inputs.app_name }} \
               --helm-set app.image=udaytc/${{ inputs.app_name }}:${{ inputs.image_tag }}
+          else
+            echo "No image tag provided, using default from values.yaml"
           fi
         shell: bash
 
