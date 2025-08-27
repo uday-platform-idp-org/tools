@@ -95,17 +95,37 @@ jobs:
           fi
         shell: bash
 
-      - name: Update image tag if provided
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          repository: uday-platform-idp-org/${{ inputs.app_name }}
+          token: ${{ secrets.repo_token }}
+
+      - name: Update image tag in values.yaml
         run: |
           if [ -n "${{ inputs.image_tag }}" ]; then
-            echo "Updating tag from v8 to: ${{ inputs.image_tag }}"
-            argocd app set ${{ inputs.app_name }} \
-              --helm-set app.tag=${{ inputs.image_tag }}
+            echo "Updating tag from v8 to: ${{ inputs.image_tag }} in values.yaml"
             
-            echo "Verifying the change..."
-            argocd app get ${{ inputs.app_name }} -o yaml | grep -E "(image:|tag:)" || echo "Could not find image/tag in app config"
+            # Backup do arquivo original
+            cp helm-charts/uday-app/values.yaml helm-charts/uday-app/values.yaml.bak
+            
+            # Atualizar a tag no values.yaml
+            sed -i "s/tag: .*/tag: ${{ inputs.image_tag }}/" helm-charts/uday-app/values.yaml
+            
+            # Mostrar a diferença
+            echo "Changes made:"
+            diff helm-charts/uday-app/values.yaml.bak helm-charts/uday-app/values.yaml || true
+            
+            # Commit e push das mudanças
+            git config --global user.name "GitHub Actions"
+            git config --global user.email "actions@github.com"
+            git add helm-charts/uday-app/values.yaml
+            git commit -m "Update image tag to ${{ inputs.image_tag }}"
+            git push
+            
+            echo "values.yaml updated successfully"
           else
-            echo "No image tag provided, using default from values.yaml (v8)"
+            echo "No image tag provided, keeping default in values.yaml"
           fi
         shell: bash
 
