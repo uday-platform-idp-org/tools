@@ -18,13 +18,16 @@ on:
         required: false
         type: string
         default: "admin"
+      image_tag:
+        required: false
+        type: string
     secrets:
       argocd_password:
         required: true
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest 
     
     steps:
       - name: Download argocd CLI
@@ -45,6 +48,39 @@ jobs:
             --grpc-web \
             --username ${{ inputs.argocd_username }} \
             --password ${{ secrets.argocd_password }}
+        shell: bash
+
+      - name: List applications
+        run: |
+          echo "Listing all applications..."
+          argocd app list
+        shell: bash
+
+      - name: Create application if not exists
+        run: |
+          if ! argocd app get ${{ inputs.app_name }} >/dev/null 2>&1; then
+            echo "Application ${{ inputs.app_name }} not found. Creating..."
+            argocd app create ${{ inputs.app_name }} \
+              --repo https://github.com/${{ github.repository }} \
+              --path helm-charts \
+              --values values.yaml \
+              --dest-server https://kubernetes.default.svc \
+              --dest-namespace uday-app \
+              --sync-policy automated \
+              --auto-prune \
+              --self-heal
+          else
+            echo "Application ${{ inputs.app_name }} already exists"
+          fi
+        shell: bash
+
+      - name: Update image tag if provided
+        run: |
+          if [ -n "${{ inputs.image_tag }}" ]; then
+            echo "Updating image tag to: ${{ inputs.image_tag }}"
+            argocd app set ${{ inputs.app_name }} \
+              --helm-set app.image=udaytc/${{ inputs.app_name }}:${{ inputs.image_tag }}
+          fi
         shell: bash
 
       - name: Sync and Wait
