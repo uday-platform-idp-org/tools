@@ -29,7 +29,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: self-hosted  # Mude de ubuntu-latest para self-hosted
+    runs-on: ubuntu-latest
     
     steps:
       - name: Download argocd CLI
@@ -38,11 +38,6 @@ jobs:
           chmod +x argocd
           sudo mv argocd /usr/local/bin/argocd
 
-      - name: Test connectivity
-        run: |
-          echo "Testing connectivity to ArgoCD server..."
-          curl -k --connect-timeout 10 https://${{ inputs.argocd_server }}:${{ inputs.argocd_port }} || true
-        
       - name: ArgoCD Login
         run: |
           argocd login ${{ inputs.argocd_server }}:${{ inputs.argocd_port }} \
@@ -84,7 +79,6 @@ jobs:
           if ! argocd app get ${{ inputs.app_name }} >/dev/null 2>&1; then
             echo "Application ${{ inputs.app_name }} not found. Creating..."
             
-            # Usando o path correto e configurando image e tag separadamente
             echo "Trying to create application with correct path..."
             argocd app create ${{ inputs.app_name }} \
               --repo https://github.com/uday-platform-idp-org/${{ inputs.app_name }} \
