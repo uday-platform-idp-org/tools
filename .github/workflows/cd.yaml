@@ -95,6 +95,15 @@ jobs:
           fi
         shell: bash
 
+      - name: Debug inputs received
+        run: |
+          echo "=== DEBUGGING CD INPUTS ==="
+          echo "app_name = '${{ inputs.app_name }}'"
+          echo "argocd_server = '${{ inputs.argocd_server }}'"
+          echo "image_tag = '${{ inputs.image_tag }}'"
+          echo "All inputs:"
+          echo "inputs = ${{ toJson(inputs) }}"
+
       - name: Debug token availability
         run: |
           echo "Checking if token is available..."
@@ -107,7 +116,7 @@ jobs:
       - name: Checkout repository
         run: |
           echo "Cloning repository..."
-          if git clone https://${{ github.actor }}:${{ secrets.repo_token }}@github.com/uday-platform-idp-org/${{ inputs.app_name }}.git infra; then
+          if git clone https://x-access-token:${{ secrets.repo_token }}@github.com/uday-platform-idp-org/${{ inputs.app_name }}.git infra; then
             echo "✅ Repository cloned successfully"
             ls -la infra/
           else
@@ -119,8 +128,10 @@ jobs:
 
       - name: Configure Git
         run: |
-          git config --global user.name "GitHub Actions"
+          git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
+          # Configure git to use the token properly
+          git config --global url."https://x-access-token:${{ secrets.repo_token }}@github.com/".insteadOf "https://github.com/"
 
       - name: Update image tag in Helm values.yaml
         run: |
