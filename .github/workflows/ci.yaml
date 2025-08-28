@@ -12,6 +12,10 @@ on:
         required: true
       dockerhub_token:
         required: true
+    outputs:
+      image_tag:
+        description: "Generated image tag"  
+        value: ${{ jobs.build-and-push.outputs.image_tag }}
 
 jobs:
   build-and-push:
