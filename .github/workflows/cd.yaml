@@ -96,11 +96,9 @@ jobs:
         shell: bash
 
       - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          repository: uday-platform-idp-org/${{ inputs.app_name }}
-          token: ${{ secrets.repo_token }}
-          path: infra
+        run: |
+          git clone https://${{ github.actor }}:${{ secrets.repo_token }}@github.com/uday-platform-idp-org/${{ inputs.app_name }}.git infra
+        shell: bash
 
       - name: Configure Git
         run: |
