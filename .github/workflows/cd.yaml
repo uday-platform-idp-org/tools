@@ -95,6 +95,17 @@ jobs:
           fi
         shell: bash
 
+      - name: Debug token availability
+        run: |
+          echo "Checking if token is available..."
+          if [ -n "${{ secrets.repo_token }}" ]; then
+            echo "✅ Token is available (length: ${#{{ secrets.repo_token }}})"
+          else
+            echo "❌ Token is NOT available or empty"
+            echo "Available secrets (names only):"
+            env | grep -E "(GITHUB_|SECRET_)" || echo "No secrets found"
+          fi
+
       - name: Checkout repository
         run: |
           git clone https://${{ github.actor }}:${{ secrets.repo_token }}@github.com/uday-platform-idp-org/${{ inputs.app_name }}.git infra
