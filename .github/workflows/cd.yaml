@@ -96,77 +96,52 @@ jobs:
         shell: bash
 
       - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          repository: uday-platform-idp-org/${{ inputs.app_name }}
+          token: ${{ secrets.repo_token }}
+          path: infra
+
+      - name: Configure Git
         run: |
-          git clone https://${{ github.actor }}:${{ secrets.repo_token }}@github.com/uday-platform-idp-org/${{ inputs.app_name }}.git .
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-        shell: bash
 
-      - name: Update image tag in values.yaml
+      - name: Update image tag in Helm values.yaml
         run: |
+          cd infra
           echo "Debug: image_tag input = '${{ inputs.image_tag }}'"
           echo "Current working directory: $(pwd)"
-          echo "Directory structure:"
-          find . -name "values.yaml" -type f
-          
-          # Tentar diferentes caminhos possíveis
-          VALUES_FILE=""
-          if [ -f "helm-charts/uday-app/values.yaml" ]; then
-            VALUES_FILE="helm-charts/uday-app/values.yaml"
-          elif [ -f "uday-app/helm-charts/uday-app/values.yaml" ]; then
-            VALUES_FILE="uday-app/helm-charts/uday-app/values.yaml"
-          elif [ -f "./values.yaml" ]; then
-            VALUES_FILE="./values.yaml"
-          else
-            echo "values.yaml not found, listing all directories:"
-            ls -la
-            find . -type f -name "*.yaml"
-            exit 1
-          fi
-          
-          echo "Found values.yaml at: $VALUES_FILE"
           
           if [ -n "${{ inputs.image_tag }}" ]; then
-            echo "Updating tag from v8 to: ${{ inputs.image_tag }} in $VALUES_FILE"
+            echo "Updating tag from v8 to: ${{ inputs.image_tag }} in values.yaml"
             
             # Mostrar conteúdo atual
-            echo "Current content of $VALUES_FILE:"
-            cat "$VALUES_FILE"
+            echo "Current content of values.yaml:"
+            cat helm-charts/uday-app/values.yaml
             
-            # Backup do arquivo original
-            cp "$VALUES_FILE" "$VALUES_FILE.bak"
-            
-            # Atualizar a tag no values.yaml - usando uma regex mais específica
-            echo "Running sed command..."
-            sed -i 's/^  tag: .*/  tag: ${{ inputs.image_tag }}/' "$VALUES_FILE"
+            # Atualizar a tag no values.yaml
+            sed -i "s/tag: .*/tag: ${{ inputs.image_tag }}/" helm-charts/uday-app/values.yaml
             
             echo "Content after sed:"
-            cat "$VALUES_FILE"
+            cat helm-charts/uday-app/values.yaml
             
-            # Verificar se houve mudança
-            if ! diff "$VALUES_FILE.bak" "$VALUES_FILE" >/dev/null; then
-              echo "File changed, committing..."
-              
-              # Mostrar a diferença
-              echo "Changes made:"
-              diff "$VALUES_FILE.bak" "$VALUES_FILE" || true
-              
-              # Verificar status do git
-              git status
-              
-              # Commit e push das mudanças
-              git add "$VALUES_FILE"
-              git commit -m "Update image tag to ${{ inputs.image_tag }}"
-              git push
-              
-              echo "values.yaml updated successfully"
-            else
-              echo "No changes detected in the file"
-            fi
+            echo "values.yaml updated successfully"
           else
-            echo "No image tag provided (empty or null), keeping default in values.yaml"
+            echo "No image tag provided, keeping default in values.yaml"
           fi
-        shell: bash
+
+      - name: Commit and Push
+        run: |
+          cd infra
+          if [ -n "${{ inputs.image_tag }}" ]; then
+            git add .
+            git commit -m "Update image tag to ${{ inputs.image_tag }}"
+            git push
+            echo "Changes committed and pushed"
+          else
+            echo "No changes to commit"
+          fi
 
       - name: Sync and Wait
         run: |
