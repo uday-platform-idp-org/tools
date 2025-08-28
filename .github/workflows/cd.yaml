@@ -105,38 +105,57 @@ jobs:
       - name: Update image tag in values.yaml
         run: |
           echo "Debug: image_tag input = '${{ inputs.image_tag }}'"
+          echo "Current working directory: $(pwd)"
+          echo "Directory structure:"
+          find . -name "values.yaml" -type f
+          
+          # Tentar diferentes caminhos possíveis
+          VALUES_FILE=""
+          if [ -f "helm-charts/uday-app/values.yaml" ]; then
+            VALUES_FILE="helm-charts/uday-app/values.yaml"
+          elif [ -f "uday-app/helm-charts/uday-app/values.yaml" ]; then
+            VALUES_FILE="uday-app/helm-charts/uday-app/values.yaml"
+          elif [ -f "./values.yaml" ]; then
+            VALUES_FILE="./values.yaml"
+          else
+            echo "values.yaml not found, listing all directories:"
+            ls -la
+            find . -type f -name "*.yaml"
+            exit 1
+          fi
+          
+          echo "Found values.yaml at: $VALUES_FILE"
           
           if [ -n "${{ inputs.image_tag }}" ]; then
-            echo "Updating tag from v8 to: ${{ inputs.image_tag }} in values.yaml"
+            echo "Updating tag from v8 to: ${{ inputs.image_tag }} in $VALUES_FILE"
             
-            # Verificar se o arquivo existe
-            ls -la helm-charts/uday-app/
-            echo "Current content of values.yaml:"
-            cat helm-charts/uday-app/values.yaml
+            # Mostrar conteúdo atual
+            echo "Current content of $VALUES_FILE:"
+            cat "$VALUES_FILE"
             
             # Backup do arquivo original
-            cp helm-charts/uday-app/values.yaml helm-charts/uday-app/values.yaml.bak
+            cp "$VALUES_FILE" "$VALUES_FILE.bak"
             
-            # Atualizar a tag no values.yaml
+            # Atualizar a tag no values.yaml - usando uma regex mais específica
             echo "Running sed command..."
-            sed -i "s/tag: .*/tag: ${{ inputs.image_tag }}/" helm-charts/uday-app/values.yaml
+            sed -i 's/^  tag: .*/  tag: ${{ inputs.image_tag }}/' "$VALUES_FILE"
             
             echo "Content after sed:"
-            cat helm-charts/uday-app/values.yaml
+            cat "$VALUES_FILE"
             
             # Verificar se houve mudança
-            if ! diff helm-charts/uday-app/values.yaml.bak helm-charts/uday-app/values.yaml >/dev/null; then
+            if ! diff "$VALUES_FILE.bak" "$VALUES_FILE" >/dev/null; then
               echo "File changed, committing..."
               
               # Mostrar a diferença
               echo "Changes made:"
-              diff helm-charts/uday-app/values.yaml.bak helm-charts/uday-app/values.yaml || true
+              diff "$VALUES_FILE.bak" "$VALUES_FILE" || true
               
               # Verificar status do git
               git status
               
               # Commit e push das mudanças
-              git add helm-charts/uday-app/values.yaml
+              git add "$VALUES_FILE"
               git commit -m "Update image tag to ${{ inputs.image_tag }}"
               git push
               
@@ -145,7 +164,7 @@ jobs:
               echo "No changes detected in the file"
             fi
           else
-            echo "No image tag provided, keeping default in values.yaml"
+            echo "No image tag provided (empty or null), keeping default in values.yaml"
           fi
         shell: bash
 
