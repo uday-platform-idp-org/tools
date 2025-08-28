@@ -25,7 +25,8 @@ jobs:
       - id: set-tag
         run: |
           image_tag=$(echo $GITHUB_SHA | cut -c1-7)
-          echo "tag=${image_tag}" >> $GITHUB_OUTPUT
+          echo "Generated tag: $image_tag"
+          echo "tag=$image_tag" >> $GITHUB_OUTPUT
         shell: bash
 
       - uses: docker/login-action@v2
