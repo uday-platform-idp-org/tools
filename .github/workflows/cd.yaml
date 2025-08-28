@@ -1,174 +1,35 @@
-# tool/.github/workflows/cd.yaml
-name: Deploy via ArgoCD
+# uday-app/.github/workflows/ci-cd.yaml
+name: CI-CD Pipeline
 
 on:
-  workflow_call:
-    inputs:
-      app_name:
-        required: true
-        type: string
-      argocd_server:
-        required: true
-        type: string
-      argocd_port:
-        required: false
-        type: string
-        default: "9092"
-      argocd_username:
-        required: false
-        type: string
-        default: "admin"
-      image_tag:
-        required: false
-        type: string
-    secrets:
-      argocd_password:
-        required: true
-      repo_token:
-        required: true
+  push:
+    branches: [main]
 
 jobs:
-  deploy:
+  ci:
+    uses: uday-platform-idp-org/tools/.github/workflows/ci.yaml@main
+    with:
+      app_name: uday-app
+    secrets:
+      dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
+      dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  debug:
+    needs: ci
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Download argocd CLI
+      - name: Debug CI outputs
         run: |
-          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-          chmod +x argocd
-          sudo mv argocd /usr/local/bin/argocd
+          echo "CI outputs:"
+          echo "image_tag = '${{ needs.ci.outputs.image_tag }}'"
 
-      - name: ArgoCD Login
-        run: |
-          argocd login ${{ inputs.argocd_server }}:${{ inputs.argocd_port }} \
-            --insecure \
-            --grpc-web \
-            --username ${{ inputs.argocd_username }} \
-            --password ${{ secrets.argocd_password }}
-        shell: bash
-
-      - name: Add repository credentials
-        run: |
-          echo "Adding repository credentials..."
-          argocd repo add https://github.com/uday-platform-idp-org/${{ inputs.app_name }} \
-            --username ${{ github.actor }} \
-            --password ${{ secrets.repo_token }} \
-            --insecure-skip-server-verification || echo "Repository already exists or failed to add"
-        shell: bash
-
-      - name: List repositories
-        run: |
-          echo "Listing all repositories in ArgoCD..."
-          argocd repo list
-        shell: bash
-
-      - name: Test repository connection
-        run: |
-          echo "Testing repository connection..."
-          argocd repo get https://github.com/uday-platform-idp-org/${{ inputs.app_name }} || echo "Failed to get repo details"
-        shell: bash
-
-      - name: List applications
-        run: |
-          echo "Listing all applications..."
-          argocd app list
-        shell: bash
-
-      - name: Create application if not exists
-        run: |
-          if ! argocd app get ${{ inputs.app_name }} >/dev/null 2>&1; then
-            echo "Application ${{ inputs.app_name }} not found. Creating..."
-            
-            echo "Trying to create application with correct path..."
-            argocd app create ${{ inputs.app_name }} \
-              --repo https://github.com/uday-platform-idp-org/${{ inputs.app_name }} \
-              --path helm-charts/uday-app \
-              --dest-server https://kubernetes.default.svc \
-              --dest-namespace uday-app \
-              --helm-set app.image=udaytc/${{ inputs.app_name }} \
-              --helm-set app.tag=v8 \
-              --sync-policy none
-              
-            echo "Application created successfully"
-          else
-            echo "Application ${{ inputs.app_name }} already exists"
-          fi
-        shell: bash
-
-      - name: Checkout repository
-        run: |
-          git clone https://${{ github.actor }}:${{ secrets.repo_token }}@github.com/uday-platform-idp-org/${{ inputs.app_name }}.git infra
-        shell: bash
-
-      - name: Configure Git
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-
-      - name: Update image tag in Helm values.yaml
-        run: |
-          cd infra
-          echo "=== DEBUG INFORMATION ==="
-          echo "Current working directory: $(pwd)"
-          echo "image_tag input = '${{ inputs.image_tag }}'"
-          echo "Length of image_tag = ${#{{ inputs.image_tag }}}"
-          
-          # Listar estrutura de arquivos
-          echo "Directory structure:"
-          find . -name "values.yaml" -type f
-          ls -la helm-charts/uday-app/
-          
-          if [ -n "${{ inputs.image_tag }}" ] && [ "${{ inputs.image_tag }}" != "" ]; then
-            echo "✅ image_tag is valid: '${{ inputs.image_tag }}'"
-            echo "Updating tag from v8 to: ${{ inputs.image_tag }} in values.yaml"
-            
-            # Mostrar conteúdo atual
-            echo "=== BEFORE SED ==="
-            cat helm-charts/uday-app/values.yaml | grep -A2 -B2 "tag:"
-            
-            # Atualizar a tag no values.yaml
-            echo "Running sed command..."
-            sed -i "s/tag: .*/tag: ${{ inputs.image_tag }}/" helm-charts/uday-app/values.yaml
-            
-            echo "=== AFTER SED ==="
-            cat helm-charts/uday-app/values.yaml | grep -A2 -B2 "tag:"
-            
-            # Verificar se o arquivo mudou
-            echo "=== GIT STATUS ==="
-            git status
-            git diff
-            
-            echo "values.yaml updated successfully"
-          else
-            echo "❌ image_tag is empty or null: '${{ inputs.image_tag }}'"
-            echo "No image tag provided, keeping default in values.yaml"
-          fi
-
-      - name: Commit and Push
-        run: |
-          cd infra
-          echo "=== COMMIT AND PUSH DEBUG ==="
-          echo "image_tag = '${{ inputs.image_tag }}'"
-          
-          if [ -n "${{ inputs.image_tag }}" ] && [ "${{ inputs.image_tag }}" != "" ]; then
-            echo "✅ Proceeding with commit..."
-            
-            # Verificar se há mudanças
-            if git diff --quiet; then
-              echo "❌ No changes detected in git"
-            else
-              echo "✅ Changes detected, committing..."
-              git add .
-              git commit -m "Update image tag to ${{ inputs.image_tag }}"
-              git push
-              echo "✅ Changes committed and pushed"
-            fi
-          else
-            echo "❌ No image_tag provided, skipping commit"
-          fi
-
-      - name: Sync and Wait
-        run: |
-          argocd app sync ${{ inputs.app_name }}
-          argocd app wait ${{ inputs.app_name }} --timeout 180
-        shell: bash
+  cd:
+    needs: ci
+    uses: uday-platform-idp-org/tools/.github/workflows/cd.yaml@main
+    with:
+      app_name: uday-app
+      argocd_server: argocd.uday.com.br
+      image_tag: ${{ needs.ci.outputs.image_tag }}
+    secrets:
+      argocd_password: ${{ secrets.ARGOCD_PASSWORD }}
+      repo_token: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
