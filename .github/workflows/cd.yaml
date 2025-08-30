@@ -49,11 +49,14 @@ jobs:
 
       - name: Add repository credentials
         run: |
-          echo "Adding repository credentials..."
+          echo "Removing existing repository (if any)..."
+          argocd repo rm https://github.com/uday-platform-idp-org/${{ inputs.app_name }} || echo "Repository not found or already removed"
+          
+          echo "Adding repository credentials with new token..."
           argocd repo add https://github.com/uday-platform-idp-org/${{ inputs.app_name }} \
-            --username ${{ github.actor }} \
+            --username oauth2 \
             --password ${{ secrets.repo_token }} \
-            --insecure-skip-server-verification || echo "Repository already exists or failed to add"
+            --insecure-skip-server-verification
         shell: bash
 
       - name: List applications
