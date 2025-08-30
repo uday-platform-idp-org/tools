@@ -1,4 +1,3 @@
-# tool/.github/workflows/cd.yaml
 name: Deploy via ArgoCD
 
 on:
