@@ -8,14 +8,15 @@ app:
     listen:
       host: 0.0.0.0
 
-  database:
-    client: pg
-    connection:
-      host: ${POSTGRES_HOST}
-      port: ${POSTGRES_PORT}
-      user: ${POSTGRES_USER}
-      password: ${POSTGRES_PASSWORD}
-     
+database:
+  client: pg
+  connection:
+    host: ${POSTGRES_HOST}
+    port: ${POSTGRES_PORT}
+    user: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    database: ${POSTGRES_DB}
+
 auth:
   environment: production
   providers:
@@ -29,7 +30,9 @@ auth:
 
 catalog:
   rules:
-    - allow: [User, Component, System, API, Resource, Location]
+    - allow: [Group, User, Component, System, API, Resource, Location]
   locations:
     - type: file
       target: identidades/usuarios.yaml
+    - type: file
+      target: identidades/grupos.yaml

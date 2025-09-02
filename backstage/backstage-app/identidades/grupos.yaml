@@ -1,0 +1,13 @@
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: devops
+  description: The backstage DevOps Engineering
+spec:
+  type: DevOps Engineering
+  profile:
+    displayName: DevOps Backstage
+    email: devops@uday.com.br
+    picture: https://api.dicebear.com/7.x/identicon/svg?seed=Fluffy&backgroundColor=ffdfbf
+    parent: infrastructure
+    children: [team-a, team-b]
