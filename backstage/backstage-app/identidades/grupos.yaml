@@ -10,7 +10,6 @@ spec:
     email: devops@uday.com.br
     picture: https://github.com/uday-platform-idp-org/tools/blob/main/backstage/img/grupos/agil.png
   parent: infrastructure
-  children: []
 
 ---
 apiVersion: backstage.io/v1alpha1
@@ -24,4 +23,3 @@ spec:
     displayName: Backstage
     email: infrastructure@uday.com.br
     picture: https://github.com/uday-platform-idp-org/tools/blob/main/backstage/img/grupos/infra.jpg
-  children: []
