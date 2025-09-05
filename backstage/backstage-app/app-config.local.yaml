@@ -21,7 +21,9 @@ auth:
 
 catalog:
   rules:
-    - allow: [User, Component, System, API, Resource, Location]
+    - allow: [Group, User, Component, System, API, Resource, Location]
   locations:
     - type: file
       target: /app/backstage-app/identidades/usuarios.yaml
+    - type: file
+      target: /app/backstage-app/identidades/grupos.yaml
